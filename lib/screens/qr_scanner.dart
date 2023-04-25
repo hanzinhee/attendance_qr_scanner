@@ -13,7 +13,6 @@ class QRScanner extends StatefulWidget {
 }
 
 class _QRScannerState extends State<QRScanner> {
-  Barcode? result;
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
   QRViewController? controller;
   StreamSubscription? subscription;
@@ -39,15 +38,35 @@ class _QRScannerState extends State<QRScanner> {
   }
 
   void _onQRViewCreated(QRViewController controller) {
-    controller.flipCamera();
+    controller.resumeCamera();
 
-    setState(() {
-      this.controller = controller;
-    });
-    controller.scannedDataStream.listen((scanData) {
-      setState(() {
-        result = scanData;
-      });
+    this.controller = controller;
+    controller.scannedDataStream.listen((Barcode scanData) {
+      if (scanData.code != null) {
+        controller.pauseCamera();
+        final ScaffoldFeatureController res =
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          duration: const Duration(milliseconds: 2000),
+          content: Align(
+              alignment: const Alignment(0, 0.7),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.check,
+                      color: MainColors.qrScannerLightGreen, size: 40),
+                  Text(
+                    scanData.code!,
+                    style: const TextStyle(fontSize: 24),
+                  ),
+                ],
+              )),
+          backgroundColor: Colors.transparent,
+          behavior: SnackBarBehavior.floating,
+        ));
+        res.closed.then((value) {
+          controller.resumeCamera();
+        });
+      }
     });
   }
 
@@ -88,6 +107,7 @@ class _QRScannerState extends State<QRScanner> {
           QRView(
             key: qrKey,
             onQRViewCreated: _onQRViewCreated,
+            // cameraFacing: CameraFacing.front,
             overlay: QrScannerOverlayShape(
                 borderColor: MainColors.qrScannerLightGreen,
                 borderRadius: 5,
@@ -120,10 +140,6 @@ class _QRScannerState extends State<QRScanner> {
                         ),
                       ],
                     )),
-          Align(
-              alignment: const Alignment(0, 0.65),
-              child: Text(result?.code ?? '',
-                  style: const TextStyle(fontSize: 20, color: Colors.white))),
 
           // Positioned(
           //     top: kToolbarHeight + 20, child: Text(networkStatus.toString())),
