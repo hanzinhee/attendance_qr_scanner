@@ -53,7 +53,7 @@ class _QRScannerState extends State<QRScanner> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.check,
-                      color: MainColors.qrScannerLightGreen, size: 40),
+                      color: MainColors.greenAccent, size: 40),
                   Text(
                     scanData.code!,
                     style: const TextStyle(fontSize: 24),
@@ -109,7 +109,7 @@ class _QRScannerState extends State<QRScanner> {
             onQRViewCreated: _onQRViewCreated,
             // cameraFacing: CameraFacing.front,
             overlay: QrScannerOverlayShape(
-                borderColor: MainColors.qrScannerLightGreen,
+                borderColor: MainColors.greenAccent[700]!,
                 borderRadius: 5,
                 borderLength: 40,
                 borderWidth: 10,
