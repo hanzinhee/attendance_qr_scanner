@@ -1,7 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="scanner.qr.attendance.attendance_qr_scanner">
+   <uses-permission android:name="android.permission.INTERNET"/>
    <application
-        android:label="CheckQR"
+        android:label="QR스캐너"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity
