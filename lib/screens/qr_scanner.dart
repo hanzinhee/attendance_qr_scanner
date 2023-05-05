@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:attendance_qr_scanner/constant/colors.dart';
+import 'package:attendance_qr_scanner/screens/input_form.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -100,10 +101,7 @@ class _QRScannerState extends State<QRScanner> {
 
     try {
       await Dio().post(
-          "${dotenv.env['API_URL']!}/api/attendance-scan?congregation_name=$congregationName",
-          data: {
-            'code': scanData.code,
-          });
+          "${dotenv.env['API_URL']!}/api/attendance-scan?congregation_name=$congregationName");
     } catch (e) {
       showErrorSnackBar('출석 등록에 실패하였습니다.\n다시 시도해주세요.');
       return;
@@ -227,17 +225,42 @@ class _QRScannerState extends State<QRScanner> {
                                 fontSize: 20, color: Colors.redAccent)),
                       ],
                     )
-                  : Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.qr_code,
-                            size: 40, color: Colors.white.withOpacity(0.5)),
-                        const SizedBox(width: 5),
-                        const Text(
-                          'QR코드를 스캔해주세요.',
-                          style: TextStyle(fontSize: 22, color: Colors.white),
-                        ),
-                      ],
+                  : InkWell(
+                      onDoubleTap: () async {
+                        final navi = Navigator.of(context);
+                        final res = await showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                                  title: const Text('직접 입력 화면으로 이동하시겠습니까?'),
+                                  actions: [
+                                    TextButton(
+                                        onPressed: () async {
+                                          Navigator.pop(context, false);
+                                        },
+                                        child: const Text('아니오')),
+                                    TextButton(
+                                        onPressed: () async {
+                                          Navigator.pop(context, true);
+                                        },
+                                        child: const Text('예')),
+                                  ],
+                                ));
+                        if (res == false) return;
+                        navi.push(MaterialPageRoute(
+                            builder: (context) => InputForm()));
+                      },
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.qr_code,
+                              size: 40, color: Colors.white.withOpacity(0.5)),
+                          const SizedBox(width: 5),
+                          const Text(
+                            'QR코드를 스캔해주세요.',
+                            style: TextStyle(fontSize: 22, color: Colors.white),
+                          ),
+                        ],
+                      ),
                     )),
           Center(
             child: AnimatedSwitcher(
