@@ -1,8 +1,10 @@
 import 'package:attendance_qr_scanner/constant/colors.dart';
 import 'package:attendance_qr_scanner/screens/qr_scanner.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
+Future<void> main() async {
+  await dotenv.load(fileName: ".env");
   runApp(const MyApp());
 }
 

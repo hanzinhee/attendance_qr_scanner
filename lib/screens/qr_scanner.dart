@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:attendance_qr_scanner/constant/colors.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 
@@ -17,7 +20,9 @@ class _QRScannerState extends State<QRScanner> {
   QRViewController? controller;
   StreamSubscription? subscription;
   ConnectivityResult? networkStatus;
-  bool isShowDialog = false;
+  bool isShowPermissionDialog = false;
+  bool isOnSuccess = false;
+  bool isOnError = false;
 
   @override
   void initState() {
@@ -37,43 +42,36 @@ class _QRScannerState extends State<QRScanner> {
     super.dispose();
   }
 
-  void _onQRViewCreated(QRViewController controller) {
-    controller.resumeCamera();
-
-    this.controller = controller;
-    controller.scannedDataStream.listen((Barcode scanData) {
-      if (scanData.code != null) {
-        controller.pauseCamera();
-        final ScaffoldFeatureController res =
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          duration: const Duration(milliseconds: 2000),
-          content: Align(
-              alignment: const Alignment(0, 0.7),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.check,
-                      color: MainColors.greenAccent, size: 40),
-                  Text(
-                    scanData.code!,
-                    style: const TextStyle(fontSize: 24),
-                  ),
-                ],
-              )),
-          backgroundColor: Colors.transparent,
-          behavior: SnackBarBehavior.floating,
-        ));
-        res.closed.then((value) {
-          controller.resumeCamera();
-        });
-      }
-    });
+  Widget? get feedbackIcon {
+    if (isOnSuccess) {
+      return const Icon(Icons.check, color: MainColors.greenAccent, size: 150);
+    } else if (isOnError) {
+      return const Icon(Icons.close, color: Colors.redAccent, size: 150);
+    } else {
+      return null;
+    }
   }
 
-  Future<void> _onPermissionSet(QRViewController ctrl, bool permission) async {
-    if (!permission && !isShowDialog) {
+  Color get qrScannerBorderColor {
+    if (isOnSuccess) {
+      return MainColors.greenAccent;
+    } else if (isOnError) {
+      return Colors.redAccent;
+    } else {
+      return Colors.white;
+    }
+  }
+
+  void onQRViewCreated(QRViewController controller) {
+    controller.resumeCamera();
+    this.controller = controller;
+    controller.scannedDataStream.listen(onScannedData);
+  }
+
+  Future<void> onPermissionSet(QRViewController ctrl, bool permission) async {
+    if (!permission && !isShowPermissionDialog) {
       setState(() async {
-        isShowDialog = true;
+        isShowPermissionDialog = true;
         await showDialog(
             context: context,
             builder: (context) => AlertDialog(
@@ -87,9 +85,108 @@ class _QRScannerState extends State<QRScanner> {
                         child: const Text('설정화면으로 이동')),
                   ],
                 ));
-        isShowDialog = false;
+        isShowPermissionDialog = false;
       });
     }
+  }
+
+  Future<void> onScannedData(Barcode scanData) async {
+    controller!.pauseCamera();
+    var congregationName = scanData.code;
+    if (!await qrcodeValidator(congregationName ?? '')) {
+      showErrorSnackBar('올바르지 않은 QR코드입니다.');
+      return;
+    }
+
+    try {
+      await Dio().post(
+          "${dotenv.env['API_URL']!}/api/attendance-scan?congregation_name=$congregationName",
+          data: {
+            'code': scanData.code,
+          });
+    } catch (e) {
+      showErrorSnackBar('출석 등록에 실패하였습니다.\n다시 시도해주세요.');
+      return;
+    }
+
+    try {
+      final attendanceRes = await Dio().get(
+          "${dotenv.env['API_URL']!}/api/attendance?congregation_name=$congregationName");
+
+      if (attendanceRes.data['is_scan'] == false) {
+        showErrorSnackBar('출석 등록에 실패하였습니다.\n다시 시도해주세요.');
+        return;
+      }
+      congregationName = '$congregationName\n${attendanceRes.data['names']}';
+      showOkSnackBar(congregationName);
+    } catch (e) {
+      showErrorSnackBar('출석 등록 확인에 실패하였습니다.\n올바로 등록되지 않았을 수 있습니다. 다시 시도해주세요.');
+    }
+  }
+
+  Future<bool> qrcodeValidator(String congregationName) async {
+    try {
+      final res = await Dio().get(
+          "${dotenv.env['API_URL']!}/api/attendance?congregation_name=$congregationName");
+      if (res.statusCode == 200) return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print(e);
+      }
+    }
+    return false;
+  }
+
+  void showOkSnackBar(text) {
+    setState(() {
+      isOnSuccess = true;
+    });
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(
+          duration: const Duration(milliseconds: 3000),
+          content: Align(
+              alignment: const Alignment(0, 0.7),
+              child: Text(
+                text,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 24),
+              )),
+          backgroundColor: Colors.transparent,
+          behavior: SnackBarBehavior.floating,
+        ))
+        .closed
+        .then((value) {
+      controller!.resumeCamera();
+      setState(() {
+        isOnSuccess = false;
+      });
+    });
+  }
+
+  void showErrorSnackBar(text) {
+    setState(() {
+      isOnError = true;
+    });
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(
+          duration: const Duration(milliseconds: 3000),
+          content: Align(
+              alignment: const Alignment(0, 0.7),
+              child: Text(
+                text,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 21, color: Colors.redAccent),
+              )),
+          backgroundColor: Colors.transparent,
+          behavior: SnackBarBehavior.floating,
+        ))
+        .closed
+        .then((value) {
+      controller!.resumeCamera();
+      setState(() {
+        isOnError = false;
+      });
+    });
   }
 
   @override
@@ -106,15 +203,15 @@ class _QRScannerState extends State<QRScanner> {
         children: [
           QRView(
             key: qrKey,
-            onQRViewCreated: _onQRViewCreated,
-            // cameraFacing: CameraFacing.front,
+            onQRViewCreated: onQRViewCreated,
+            cameraFacing: CameraFacing.front,
             overlay: QrScannerOverlayShape(
-                borderColor: MainColors.greenAccent[700]!,
+                borderColor: qrScannerBorderColor,
                 borderRadius: 5,
                 borderLength: 40,
                 borderWidth: 10,
                 cutOutSize: scanAreaRadius),
-            onPermissionSet: _onPermissionSet,
+            onPermissionSet: onPermissionSet,
           ),
           Align(
               alignment: const Alignment(0, -0.65),
@@ -124,6 +221,7 @@ class _QRScannerState extends State<QRScanner> {
                       children: [
                         Icon(Icons.wifi_off,
                             size: 40, color: Colors.redAccent.withOpacity(0.5)),
+                        const SizedBox(width: 5),
                         const Text('인터넷 연결을 확인해주세요.',
                             style: TextStyle(
                                 fontSize: 20, color: Colors.redAccent)),
@@ -134,15 +232,19 @@ class _QRScannerState extends State<QRScanner> {
                       children: [
                         Icon(Icons.qr_code,
                             size: 40, color: Colors.white.withOpacity(0.5)),
+                        const SizedBox(width: 5),
                         const Text(
                           'QR코드를 스캔해주세요.',
                           style: TextStyle(fontSize: 22, color: Colors.white),
                         ),
                       ],
                     )),
-
-          // Positioned(
-          //     top: kToolbarHeight + 20, child: Text(networkStatus.toString())),
+          Center(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: feedbackIcon,
+            ),
+          )
         ],
       ),
     );
