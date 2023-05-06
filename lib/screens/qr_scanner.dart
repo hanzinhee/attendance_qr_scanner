@@ -141,7 +141,7 @@ class _QRScannerState extends State<QRScanner> {
     });
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(
-          duration: const Duration(milliseconds: 3000),
+          duration: const Duration(milliseconds: 1000),
           content: Align(
               alignment: const Alignment(0, 0.7),
               child: Text(
@@ -167,7 +167,7 @@ class _QRScannerState extends State<QRScanner> {
     });
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(
-          duration: const Duration(milliseconds: 3000),
+          duration: const Duration(milliseconds: 1000),
           content: Align(
               alignment: const Alignment(0, 0.7),
               child: Text(
