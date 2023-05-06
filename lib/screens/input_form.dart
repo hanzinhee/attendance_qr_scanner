@@ -28,6 +28,7 @@ class _InputFormState extends State<InputForm> {
               ),
             ),
             SizedBox(
+              width: double.infinity,
               child: ElevatedButton(
                 onPressed: () async {
                   try {
@@ -73,7 +74,7 @@ class _InputFormState extends State<InputForm> {
                         context: context,
                         builder: (context) => AlertDialog(
                               title: Text(
-                                  '출석 등록 되었습니다..\n${attendanceRes.data['names']}'),
+                                  '출석 등록 되었습니다.\n${attendanceRes.data['names']}'),
                               actions: [
                                 TextButton(
                                     onPressed: () async {
