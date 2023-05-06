@@ -247,7 +247,7 @@ class _QRScannerState extends State<QRScanner> {
                                 ));
                         if (res == false) return;
                         navi.push(MaterialPageRoute(
-                            builder: (context) => InputForm()));
+                            builder: (context) => const InputForm()));
                       },
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -267,7 +267,24 @@ class _QRScannerState extends State<QRScanner> {
               duration: const Duration(milliseconds: 300),
               child: feedbackIcon,
             ),
-          )
+          ),
+          if (controller != null)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topRight,
+                child: IconButton(
+                    onPressed: () {
+                      setState(() {
+                        controller!.flipCamera();
+                      });
+                    },
+                    icon: Icon(
+                      Icons.flip_camera_ios,
+                      size: 30,
+                      color: Colors.white.withOpacity(0.5),
+                    )),
+              ),
+            )
         ],
       ),
     );
